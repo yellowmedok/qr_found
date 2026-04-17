@@ -1,5 +1,8 @@
 import os
 from flask import Flask, request, jsonify
+import io
+import qrcode
+from flask import send_file
 
 app = Flask(__name__)
 
@@ -8,10 +11,6 @@ storage = {}
 @app.route('/')
 def index():
     return "<h1>QR-Found Backend is Running!</h1>"
-
-@app.route('/')
-def home():
-    return "Сервер QR-Found працює! Команда PP-34 готова до захисту."
 
 @app.route('/create', methods=['POST'])
 def create_item():
@@ -32,6 +31,21 @@ def view_item(item_id):
     if not item:
         return "Річ не знайдена", 404
     return f"Ви знайшли річ: {item['item_name']}. Будь ласка, залиште свій номер телефону."
+
+@app.route('/generate_qr/<item_id>')
+def generate_qr(item_id):
+    # Створюємо посилання, яке буде вшито в QR
+    qr_url = f"https://qr-found.onrender.com/item/{item_id}"
+    
+    # Генеруємо QR-код
+    img = qrcode.make(qr_url)
+    
+    # Зберігаємо картинку в пам'ять, щоб відправити користувачу
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    
+    return send_file(buf, mimetype='image/png')
 
 if __name__ == '__main__':
     # Отримуємо порт, який нам виділяє Render
