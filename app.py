@@ -6,6 +6,10 @@ app = Flask(__name__)
 storage = {}
 
 @app.route('/')
+def index():
+    return "<h1>QR-Found Backend is Running!</h1>"
+
+@app.route('/')
 def home():
     return "Сервер QR-Found працює! Команда PP-34 готова до захисту."
 
