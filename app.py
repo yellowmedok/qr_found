@@ -710,51 +710,50 @@ def generate_pdf(item_id):
 
     qr_url = f"{request.host_url}item/{item_id}"
     img = qrcode.make(qr_url)
+
     qr_buf = io.BytesIO()
     img.save(qr_buf, format='PNG')
     qr_buf.seek(0)
 
     pdf = FPDF()
     pdf.add_page()
-    
+
     font_name = "Helvetica"
-    try:
-        pdf.add_font('Baloo2', 'B', 'Baloo2-Bold.ttf', uni=True)
-        font_name = 'Baloo2'
-    except:
-        pass
 
-    pdf.set_draw_color(14, 113, 86) 
+    # рамка
+    pdf.set_draw_color(14, 113, 86)
     pdf.set_line_width(1.5)
-    pdf.rect(50, 20, 110, 145) 
+    pdf.rect(50, 20, 110, 145)
 
+    # заголовок
     pdf.set_font(font_name, 'B', 26)
     pdf.set_y(32)
     pdf.set_text_color(14, 113, 86)
     pdf.cell(0, 15, "QR-Found", ln=True, align='C')
 
-    temp_path = f"temp_qr_{item_id}.png"
-    with open(temp_path, "wb") as f:
-        f.write(qr_buf.getbuffer())
-    
-    pdf.image(temp_path, x=65, y=52, w=80)
-    
-    pdf.set_y(138) 
-    pdf.set_text_color(55, 54, 54) 
-    
+    # QR 
+    pdf.image(qr_buf, x=65, y=52, w=80)
+
+    # текст
+    pdf.set_y(138)
+    pdf.set_text_color(55, 54, 54)
+
     pdf.set_font(font_name, 'B', 18)
     pdf.cell(0, 10, f"Item: {data['item_name']}", ln=True, align='C')
-    
+
     pdf.set_font(font_name, 'B', 11)
     pdf.cell(0, 7, "SCAN TO CONTACT OWNER", ln=True, align='C')
 
-    pdf_content = pdf.output() 
-    pdf_output = io.BytesIO(pdf_content)
-    
-    if os.path.exists(temp_path):
-        os.remove(temp_path)
+    # правильний output для Render
+    pdf_bytes = pdf.output(dest='S').encode('latin-1')
+    pdf_output = io.BytesIO(pdf_bytes)
 
-    return send_file(pdf_output, mimetype='application/pdf', as_attachment=True, download_name=f"QR_Found_{item_id}.pdf")
+    return send_file(
+        pdf_output,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=f"QR_Found_{item_id}.pdf"
+    )
 
 #створює картинку QR-коду
 @app.route('/generate_qr/<item_id>')
