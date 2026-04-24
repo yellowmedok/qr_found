@@ -702,6 +702,7 @@ def create_item():
     ''', name=user_data['owner_name'], qr_code=qr_base64, item_id=item_id)
 
 #створює pdf для друку qr
+
 @app.route('/generate_pdf/<item_id>')
 def generate_pdf(item_id):
     data = storage.get(item_id)
@@ -711,9 +712,9 @@ def generate_pdf(item_id):
     qr_url = f"{request.host_url}item/{item_id}"
     img = qrcode.make(qr_url)
 
-    qr_buf = io.BytesIO()
-    img.save(qr_buf, format='PNG')
-    qr_buf.seek(0)
+    # зберігаємо картинку у тимчасовий файл замість BytesIO
+    temp_img_path = f"temp_qr_{item_id}.png"
+    img.save(temp_img_path)
 
     pdf = FPDF()
     pdf.add_page()
@@ -731,21 +732,29 @@ def generate_pdf(item_id):
     pdf.set_text_color(14, 113, 86)
     pdf.cell(0, 15, "QR-Found", ln=True, align='C')
 
-    # QR 
-    pdf.image(qr_buf, x=65, y=52, w=80)
+    # передаємо шлях до реального файлу
+    pdf.image(temp_img_path, x=65, y=52, w=80)
 
     # текст
     pdf.set_y(138)
     pdf.set_text_color(55, 54, 54)
 
     pdf.set_font(font_name, 'B', 18)
-    pdf.cell(0, 10, f"Item: {data['item_name']}", ln=True, align='C')
+    item_text = f"Item: {data['item_name']}".encode('latin-1', 'ignore').decode('latin-1')
+    pdf.cell(0, 10, item_text, ln=True, align='C')
 
     pdf.set_font(font_name, 'B', 11)
     pdf.cell(0, 7, "SCAN TO CONTACT OWNER", ln=True, align='C')
 
-    # правильний output для Render
-    pdf_bytes = pdf.output(dest='S').encode('latin-1')
+    # видаляємо тимчасовий файл з сервера, щоб не забивати пам'ять
+    if os.path.exists(temp_img_path):
+        os.remove(temp_img_path)
+
+    #  output для Render
+    pdf_bytes = pdf.output(dest='S')
+    if isinstance(pdf_bytes, str):
+        pdf_bytes = pdf_bytes.encode('latin-1')
+        
     pdf_output = io.BytesIO(pdf_bytes)
 
     return send_file(
@@ -754,7 +763,6 @@ def generate_pdf(item_id):
         as_attachment=True,
         download_name=f"QR_Found_{item_id}.pdf"
     )
-
 #створює картинку QR-коду
 @app.route('/generate_qr/<item_id>')
 def generate_qr(item_id):
